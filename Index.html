@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MIDI & Clone Hero .chart Master Utility</title>
+  <!-- Tailwind CSS for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- @tonejs/midi library for parsing and compiling MIDI files -->
+  <script src="https://unpkg.com/@tonejs/midi"></script>
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header Banner -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-indigo-600 rounded-lg text-white shadow-lg shadow-indigo-500/20">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.727l.707-.707M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white">MIDI & .chart Master Utility</h1>
+          <p class="text-xs text-slate-400">Map custom pitches, split MIDI tracks, or inject precise silence and note start offsets</p>
+        </div>
+      </div>
+      <div class="text-xs text-slate-400 bg-slate-800/50 border border-slate-700/50 px-3 py-1.5 rounded-full flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+        Client-Side Processing (No Upload Limits)
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-8">
+    
+    <!-- Unified File Upload Section -->
+    <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 mb-8 backdrop-blur">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+        <div class="md:col-span-6">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-bold border border-indigo-500/20">1</span>
+            <h2 class="font-semibold text-slate-200">Upload MIDI File</h2>
+          </div>
+          <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 bg-slate-950/50 hover:bg-indigo-950/10 rounded-xl p-6 text-center cursor-pointer transition duration-200 group">
+            <input type="file" id="file-input" accept=".mid,.midi" class="hidden" />
+            <div class="flex flex-col items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-500 group-hover:text-indigo-400 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+              </svg>
+              <p class="text-sm font-medium text-slate-300">Browse or drag & drop MIDI</p>
+              <p class="text-xs text-slate-500">All analysis and processing runs entirely locally</p>
+            </div>
+          </div>
+        </div>
+        <div class="md:col-span-6 flex flex-col justify-center h-full">
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">File Meta & Scope</h3>
+          <div id="file-info-placeholder" class="text-xs text-slate-500 italic p-4 border border-slate-800 rounded-lg bg-slate-950/30 text-center">
+            Upload a file to begin
+          </div>
+          <div id="file-info" class="p-4 bg-slate-950 border border-slate-850 rounded-lg text-xs hidden flex-col gap-2">
+            <div class="flex justify-between"><span class="text-slate-400">File Name:</span> <span id="info-name" class="font-semibold text-slate-200 truncate max-w-[280px]"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Source Resolution:</span> <span id="info-ppq" class="font-medium text-slate-200"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Song Duration:</span> <span id="info-duration" class="font-medium text-slate-200"></span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Total Track Lanes:</span> <span id="info-tracks" class="font-medium text-slate-200"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tab Bar -->
+    <div class="flex border-b border-slate-800 mb-8 overflow-x-auto">
+      <button id="tab-chart" class="px-6 py-3 border-b-2 border-indigo-500 text-indigo-400 font-semibold text-sm transition focus:outline-none flex items-center gap-2 whitespace-nowrap">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" />
+        </svg>
+        Clone Hero .chart Converter
+      </button>
+      <button id="tab-export" class="px-6 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700 font-semibold text-sm transition focus:outline-none flex items-center gap-2 whitespace-nowrap">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        MIDI Track Exporter (Save to .mid)
+      </button>
+    </div>
+
+    <!-- Tab 1: Clone Hero .chart Converter Section -->
+    <div id="panel-chart" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Chart Left Config Block -->
+      <div class="lg:col-span-4 flex flex-col gap-6">
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 backdrop-blur flex flex-col gap-4">
+          <div class="flex items-center gap-2">
+            <span class="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-bold border border-indigo-500/20">2</span>
+            <h2 class="font-semibold text-slate-200">Import Properties</h2>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Input MIDI Track</label>
+            <select id="midi-track-select" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition" disabled>
+              <option value="">Upload MIDI first</option>
+            </select>
+            <span id="first-note-helper-text" class="hidden text-[11px] font-medium text-indigo-400 mt-1 block"></span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Target Chart Section</label>
+            <select id="chart-track-select" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition" disabled>
+              <option value="ExpertDrums" selected>Expert Drums (Pro Drums)</option>
+              <option value="HardDrums">Hard Drums</option>
+              <option value="MediumDrums">Medium Drums</option>
+              <option value="EasyDrums">Easy Drums</option>
+              <option value="ExpertSingle">Expert Single (Guitar)</option>
+              <option value="ExpertDoubleBass">Expert Double Bass (Bass)</option>
+            </select>
+          </div>
+
+          <!-- Added Silence & First Note Start Time controls -->
+          <div class="border-t border-slate-800 pt-4 flex flex-col gap-3">
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Silence & Start Delay</span>
+            
+            <!-- Default Lead-in Silence -->
+            <div class="flex flex-col gap-1">
+              <div class="flex items-center justify-between">
+                <label for="input-lead-in" class="text-xs text-slate-300">Default Lead-in Silence (seconds)</label>
+                <input type="number" id="input-lead-in" min="0" step="0.1" value="2.0" class="w-20 bg-slate-950 border border-slate-800 text-slate-200 rounded px-2 py-1 text-xs text-center focus:outline-none focus:border-indigo-500 transition" disabled />
+              </div>
+              <p class="text-[10px] text-slate-500">Adds empty buffer padding before original timeline starts.</p>
+            </div>
+
+            <!-- Override First Note Start Time -->
+            <div class="flex flex-col gap-1.5 mt-1 border-t border-slate-900 pt-3">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" id="chk-override-first-note" class="rounded border-slate-800 bg-slate-950 text-indigo-500 focus:ring-indigo-500 w-4 h-4 cursor-pointer" disabled />
+                <label for="chk-override-first-note" class="text-xs text-slate-300 cursor-pointer font-medium">Override First Note Start Time</label>
+              </div>
+              
+              <div id="first-note-time-container" class="flex flex-col gap-1 pl-6 hidden">
+                <div class="flex items-center justify-between">
+                  <label for="input-first-note-time" class="text-xs text-slate-400">Position first note at (seconds)</label>
+                  <input type="number" id="input-first-note-time" min="0" step="0.1" value="2.0" class="w-20 bg-slate-950 border border-slate-800 text-slate-200 rounded px-2 py-1 text-xs text-center focus:outline-none focus:border-indigo-500 transition" />
+                </div>
+                <p class="text-[10px] text-slate-500">Dynamically offsets overall chart timeline so the first active event starts precisely at this time.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 backdrop-blur flex flex-col gap-3">
+          <button id="btn-generate" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg hover:shadow-indigo-500/10 active:scale-[0.98] transition flex items-center justify-center gap-2 text-sm" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Generate & Download .chart
+          </button>
+          
+          <button id="btn-reset-presets" class="w-full py-2 px-4 border border-slate-800 hover:border-slate-700 bg-slate-900 hover:bg-slate-800/80 disabled:opacity-50 text-slate-300 font-medium rounded-lg text-xs transition" disabled>
+            Reset to General MIDI Defaults
+          </button>
+        </div>
+      </div>
+
+      <!-- Chart Right Mapping Block -->
+      <div class="lg:col-span-8 flex flex-col gap-6">
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 backdrop-blur flex-1 flex flex-col min-h-[450px]">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-bold border border-indigo-500/20">3</span>
+              <div>
+                <h2 class="font-semibold text-slate-200">Dynamic Pitch Mapping</h2>
+                <p class="text-xs text-slate-400">Map active MIDI notes to Clone Hero outputs</p>
+              </div>
+            </div>
+            
+            <div class="w-full sm:w-64 relative">
+              <input type="text" id="pitch-search" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500 transition" placeholder="Search pitch or instrument name..." disabled />
+              <div class="absolute left-3 top-2.5 text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex-1 overflow-x-auto min-h-[250px] max-h-[400px] border border-slate-800/60 rounded-lg bg-slate-950/30">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-800 bg-slate-900/40 text-slate-400 font-semibold sticky top-0 backdrop-blur z-10">
+                  <th class="p-3">MIDI Pitch</th>
+                  <th class="p-3">GM Instrument Name</th>
+                  <th class="p-3 text-center">Count</th>
+                  <th class="p-3 text-center">Test Play</th>
+                  <th class="p-3">Map to Output Lane</th>
+                </tr>
+              </thead>
+              <tbody id="mapping-tbody" class="divide-y divide-slate-900 text-slate-300">
+                <tr>
+                  <td colspan="5" class="p-8 text-center text-slate-500 italic">
+                    Please upload a MIDI file to analyze pitches
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="mt-4 text-xs text-slate-400 flex flex-wrap gap-4 justify-between items-center">
+            <span id="mapped-count-text">Mapped: 0 of 0 pitches</span>
+            <button id="btn-map-all-ignore" class="text-indigo-400 hover:text-indigo-300 font-medium transition" disabled>Set all to Ignore</button>
+          </div>
+        </div>
+        
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 backdrop-blur hidden" id="preview-panel">
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Output Preview (First 30 Lines)</h3>
+          <pre id="chart-preview" class="p-3 bg-slate-950 border border-slate-850 rounded-lg font-mono text-[11px] text-slate-400 overflow-x-auto max-h-[180px]"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: MIDI Track Exporter Section -->
+    <div id="panel-export" class="hidden flex flex-col gap-6">
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-6 backdrop-blur">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-200">Isolate & Export MIDI Tracks</h2>
+            <p class="text-xs text-slate-400">Select which tracks to retain, filter out unwanted ones, and save back to a clean .mid file</p>
+          </div>
+          <button id="btn-export-midi" class="py-2.5 px-5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-850 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-lg hover:shadow-emerald-500/10 active:scale-[0.98] transition flex items-center gap-2 text-xs" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export Selection to .mid File
+          </button>
+        </div>
+
+        <div class="overflow-x-auto border border-slate-800/60 rounded-lg bg-slate-950/30">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-900/40 text-slate-400 font-semibold sticky top-0 backdrop-blur z-10">
+                <th class="p-3 text-center w-12">
+                  <input type="checkbox" id="chk-export-all" class="rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-emerald-500 w-4 h-4 cursor-pointer" disabled />
+                </th>
+                <th class="p-3 w-16">Index</th>
+                <th class="p-3">Track Name</th>
+                <th class="p-3">Assigned Instrument</th>
+                <th class="p-3 text-center w-28">Note Count</th>
+              </tr>
+            </thead>
+            <tbody id="export-tracks-tbody" class="divide-y divide-slate-900 text-slate-300">
+              <tr>
+                <td colspan="5" class="p-8 text-center text-slate-500 italic">
+                  Please upload a MIDI file to display available tracks
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="border-t border-slate-900 bg-slate-950 py-6 mt-12 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p>© 2026 MIDI & .chart Utilities. Powered natively inside your browser.</p>
+      <div class="flex gap-4">
+        <a href="https://clonehero.net/" target="_blank" class="hover:text-slate-400 transition">Clone Hero</a>
+        <a href="https://github.com/Tonejs/Midi" target="_blank" class="hover:text-slate-400 transition">Tone.js/Midi</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // General MIDI Drum Pitches Map
+    const GM_DRUM_MAP = {
+      35: "Acoustic Bass Drum", 36: "Bass Drum 1", 37: "Side Stick", 38: "Acoustic Snare",
+      39: "Hand Clap", 40: "Electric Snare", 41: "Low Floor Tom", 42: "Closed Hi-Hat",
+      43: "High Floor Tom", 44: "Pedal Hi-Hat", 45: "Low Tom", 46: "Open Hi-Hat",
+      47: "Low-Mid Tom", 48: "Hi-Mid Tom", 49: "Crash Cymbal 1", 50: "High Tom",
+      51: "Ride Cymbal 1", 52: "Chinese Cymbal", 53: "Ride Bell", 54: "Tambourine",
+      55: "Splash Cymbal", 56: "Cowbell", 57: "Crash Cymbal 2", 58: "Vibraslap",
+      59: "Ride Cymbal 2", 60: "Hi Bongo", 61: "Low Bongo", 62: "Mute Hi Conga",
+      63: "Open Hi Conga", 64: "Low Conga", 65: "High Timbale", 66: "Low Timbale",
+      67: "High Agogo", 68: "Low Agogo", 69: "Cabasa", 70: "Maracas",
+      71: "Short Whistle", 72: "Long Whistle", 73: "Short Guiro", 74: "Long Guiro",
+      75: "Claves", 76: "Hi Wood Block", 77: "Low Wood Block", 78: "Mute Cuica",
+      79: "Open Cuica", 80: "Mute Triangle", 81: "Open Triangle"
+    };
+
+    const MAPPING_OPTIONS_DRUMS = [
+      { value: "ignore", label: "Ignore / Unmapped", class: "bg-slate-800 text-slate-400" },
+      { value: "kick", label: "Kick Pedal (Lane 0 / Note 0)", class: "bg-slate-700 text-slate-100 font-semibold" },
+      { value: "double_kick", label: "Double Kick (Note 32)", class: "bg-indigo-900/60 text-indigo-200" },
+      { value: "red", label: "Red Pad (Snare / Lane 1 / Note 1)", class: "bg-red-950/60 text-red-200" },
+      { value: "yellow_pad", label: "Yellow Pad (Tom / Lane 2 / Note 2)", class: "bg-amber-950/60 text-amber-200" },
+      { value: "yellow_cymbal", label: "Yellow Cymbal (Hi-Hat / Lane 2 / Note 2+66)", class: "bg-yellow-900/50 text-yellow-100 font-bold" },
+      { value: "blue_pad", label: "Blue Pad (Tom / Lane 3 / Note 3)", class: "bg-blue-950/60 text-blue-200" },
+      { value: "blue_cymbal", label: "Blue Cymbal (Ride / Lane 3 / Note 3+67)", class: "bg-blue-900/50 text-blue-100 font-bold" },
+      { value: "green_pad", label: "Green Pad (Floor Tom / Lane 4 / Note 4)", class: "bg-emerald-950/60 text-emerald-200" },
+      { value: "green_cymbal", label: "Green Cymbal (Crash / Lane 4 / Note 4+68)", class: "bg-emerald-900/50 text-emerald-100 font-bold" },
+      { value: "starpower", label: "Star Power / Overdrive (Special S 2)", class: "bg-purple-950/60 text-purple-200 font-bold" }
+    ];
+
+    const MAPPING_OPTIONS_GUITAR = [
+      { value: "ignore", label: "Ignore / Unmapped", class: "bg-slate-800 text-slate-400" },
+      { value: "g0", label: "Green (Lane 0 / Note 0)", class: "bg-emerald-900/60 text-emerald-200 font-semibold" },
+      { value: "g1", label: "Red (Lane 1 / Note 1)", class: "bg-red-900/60 text-red-200 font-semibold" },
+      { value: "g2", label: "Yellow (Lane 2 / Note 2)", class: "bg-amber-900/60 text-amber-200 font-semibold" },
+      { value: "g3", label: "Blue (Lane 3 / Note 3)", class: "bg-blue-900/60 text-blue-200 font-semibold" },
+      { value: "g4", label: "Orange (Lane 4 / Note 4)", class: "bg-orange-900/60 text-orange-200 font-semibold" },
+      { value: "g5", label: "Forced Flag (HOPO / Note 5)", class: "bg-slate-800 text-slate-200" },
+      { value: "g6", label: "Tap Flag (Note 6)", class: "bg-slate-800 text-slate-200" },
+      { value: "g7", label: "Open Note (Lane 7 / Note 7)", class: "bg-slate-700 text-slate-300" },
+      { value: "starpower", label: "Star Power (Special S 2)", class: "bg-purple-950/60 text-purple-200 font-bold" }
+    ];
+
+    // Global application state
+    let parsedMidiData = null;
+    let rawMidiBuffer = null;
+    let selectedTrackPitches = [];
+    let pitchMappings = {};
+    let originalFileName = "converted_song";
+    let audioCtx = null;
+
+    // View Elements
+    const tabChart = document.getElementById("tab-chart");
+    const tabExport = document.getElementById("tab-export");
+    const panelChart = document.getElementById("panel-chart");
+    const panelExport = document.getElementById("panel-export");
+
+    // UI Element Queries
+    const dropZone = document.getElementById("drop-zone");
+    const fileInput = document.getElementById("file-input");
+    const midiTrackSelect = document.getElementById("midi-track-select");
+    const firstNoteHelperText = document.getElementById("first-note-helper-text");
+    const chartTrackSelect = document.getElementById("chart-track-select");
+    const btnGenerate = document.getElementById("btn-generate");
+    const btnResetPresets = document.getElementById("btn-reset-presets");
+    const btnMapAllIgnore = document.getElementById("btn-map-all-ignore");
+    const pitchSearch = document.getElementById("pitch-search");
+    const mappingTbody = document.getElementById("mapping-tbody");
+    const mappedCountText = document.getElementById("mapped-count-text");
+    const previewPanel = document.getElementById("preview-panel");
+    const chartPreview = document.getElementById("chart-preview");
+
+    // Metadata Elements
+    const fileInfoPlaceholder = document.getElementById("file-info-placeholder");
+    const fileInfoDiv = document.getElementById("file-info");
+    const infoName = document.getElementById("info-name");
+    const infoPPQ = document.getElementById("info-ppq");
+    const infoDuration = document.getElementById("info-duration");
+    const infoTracks = document.getElementById("info-tracks");
+
+    // Offset Elements
+    const inputLeadIn = document.getElementById("input-lead-in");
+    const chkOverrideFirstNote = document.getElementById("chk-override-first-note");
+    const firstNoteTimeContainer = document.getElementById("first-note-time-container");
+    const inputFirstNoteTime = document.getElementById("input-first-note-time");
+
+    // Export Tab Elements
+    const btnExportMidi = document.getElementById("btn-export-midi");
+    const exportTracksTbody = document.getElementById("export-tracks-tbody");
+    const chkExportAll = document.getElementById("chk-export-all");
+
+    // Tab Navigation Logic
+    tabChart.addEventListener("click", () => {
+      tabChart.className = "px-6 py-3 border-b-2 border-indigo-500 text-indigo-400 font-semibold text-sm transition focus:outline-none flex items-center gap-2 whitespace-nowrap";
+      tabExport.className = "px-6 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700 font-semibold text-sm transition focus:outline-none flex items-center gap-2 whitespace-nowrap";
+      panelChart.classList.remove("hidden");
+      panelExport.classList.add("hidden");
+    });
+
+    tabExport.addEventListener("click", () => {
+      tabExport.className = "px-6 py-3 border-b-2 border-emerald-500 text-emerald-400 font-semibold text-sm transition focus:outline-none flex items-center gap-2 whitespace-nowrap";
+      tabChart.className = "px-6 py-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-700 font-semibold text-sm transition focus:outline-none flex items-center gap-2 whitespace-nowrap";
+      panelChart.classList.add("hidden");
+      panelExport.classList.remove("hidden");
+    });
+
+    // File Selection listeners
+    dropZone.addEventListener("click", () => fileInput.click());
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("border-indigo-500", "bg-indigo-950/10");
+    });
+    dropZone.addEventListener("dragleave", () => {
+      dropZone.classList.remove("border-indigo-500", "bg-indigo-950/10");
+    });
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("border-indigo-500", "bg-indigo-950/10");
+      if (e.dataTransfer.files.length > 0) {
+        handleMidiFile(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files.length > 0) {
+        handleMidiFile(e.target.files[0]);
+      }
+    });
+
+    // Processes the loaded MIDI binary array
+    function handleMidiFile(file) {
+      if (!file) return;
+      originalFileName = file.name.replace(/\.[^/.]+$/, "");
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          let LocalMidi = window.Midi;
+          if (LocalMidi && LocalMidi.default) {
+            LocalMidi = LocalMidi.default;
+          }
+          if (!LocalMidi) {
+            throw new Error("@tonejs/midi library is missing.");
+          }
+
+          rawMidiBuffer = e.target.result;
+          const midi = new LocalMidi(rawMidiBuffer);
+          parsedMidiData = midi;
+
+          // Populate general UI metadata
+          infoName.textContent = file.name;
+          infoPPQ.textContent = `${midi.header.ppq} PPQ`;
+          infoDuration.textContent = `${Math.round(midi.duration)} seconds`;
+          infoTracks.textContent = midi.tracks.length;
+          
+          fileInfoPlaceholder.classList.add("hidden");
+          fileInfoDiv.classList.remove("hidden");
+
+          // Initialize view components
+          populateMidiTrackDropdown(midi);
+          renderExportTracksTable();
+          enableControls();
+          
+        } catch (err) {
+          console.error("Error reading MIDI File: ", err);
+          alert("Could not parse MIDI. Verify the file contents are correct.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Enable panels once file is successfully stored
+    function enableControls() {
+      midiTrackSelect.disabled = false;
+      chartTrackSelect.disabled = false;
+      btnGenerate.disabled = false;
+      btnResetPresets.disabled = false;
+      btnMapAllIgnore.disabled = false;
+      pitchSearch.disabled = false;
+      chkExportAll.disabled = false;
+      btnExportMidi.disabled = false;
+      inputLeadIn.disabled = false;
+      chkOverrideFirstNote.disabled = false;
+    }
+
+    // Dynamic dropdown list mapping
+    function populateMidiTrackDropdown(midi) {
+      midiTrackSelect.innerHTML = "";
+      let highestNotesCountIdx = 0;
+      let highestNotesCount = -1;
+
+      midi.tracks.forEach((track, idx) => {
+        const noteCount = track.notes.length;
+        const name = track.name ? ` - "${track.name}"` : "";
+        const optText = `Track ${idx}${name} (${noteCount} notes)`;
+        
+        const option = document.createElement("option");
+        option.value = idx;
+        option.textContent = optText;
+        midiTrackSelect.appendChild(option);
+
+        if (noteCount > highestNotesCount) {
+          highestNotesCount = noteCount;
+          highestNotesCountIdx = idx;
+        }
+      });
+
+      midiTrackSelect.value = highestNotesCountIdx;
+      analyzeSelectedMidiTrack();
+    }
+
+    // Trigger calculations
+    midiTrackSelect.addEventListener("change", analyzeSelectedMidiTrack);
+    chartTrackSelect.addEventListener("change", () => {
+      applyAutomaticPresets();
+      renderMappingTable();
+    });
+    pitchSearch.addEventListener("input", renderMappingTable);
+
+    // Watchers for silence and delays
+    inputLeadIn.addEventListener("input", triggerLivePreview);
+    inputFirstNoteTime.addEventListener("input", triggerLivePreview);
+    chkOverrideFirstNote.addEventListener("change", (e) => {
+      if (e.target.checked) {
+        firstNoteTimeContainer.classList.remove("hidden");
+      } else {
+        firstNoteTimeContainer.classList.add("hidden");
+      }
+      triggerLivePreview();
+    });
+
+    // Render MIDI pitches table
+    function analyzeSelectedMidiTrack() {
+      if (!parsedMidiData) return;
+      const trackIdx = parseInt(midiTrackSelect.value);
+      const track = parsedMidiData.tracks[trackIdx];
+      
+      if (!track || track.notes.length === 0) {
+        selectedTrackPitches = [];
+        pitchMappings = {};
+        mappingTbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-rose-400 italic">No notes found in selected track</td></tr>`;
+        firstNoteHelperText.classList.add("hidden");
+        updateMappedPitchesCount();
+        return;
+      }
+
+      // Display when the first note actually starts in the loaded MIDI track
+      const notes = track.notes;
+      if (notes.length > 0) {
+        const originalFirstNoteTime = Math.min(...notes.map(n => n.time));
+        firstNoteHelperText.textContent = `Original track first note starts at: ${originalFirstNoteTime.toFixed(2)}s`;
+        firstNoteHelperText.classList.remove("hidden");
+      } else {
+        firstNoteHelperText.classList.add("hidden");
+      }
+
+      const counts = {};
+      track.notes.forEach(note => {
+        counts[note.midi] = (counts[note.midi] || 0) + 1;
+      });
+
+      selectedTrackPitches = Object.keys(counts).map(pitch => ({
+        pitch: parseInt(pitch),
+        count: counts[pitch]
+      })).sort((a, b) => a.pitch - b.pitch);
+
+      applyAutomaticPresets();
+      renderMappingTable();
+    }
+
+    function applyAutomaticPresets() {
+      const isDrums = chartTrackSelect.value.toLowerCase().includes("drum");
+      pitchMappings = {};
+
+      selectedTrackPitches.forEach(item => {
+        const p = item.pitch;
+        if (isDrums) {
+          if (p === 35 || p === 36) pitchMappings[p] = "kick";
+          else if (p === 38 || p === 40) pitchMappings[p] = "red";
+          else if (p === 42 || p === 44 || p === 46) pitchMappings[p] = "yellow_cymbal";
+          else if (p === 48 || p === 50) pitchMappings[p] = "yellow_pad";
+          else if (p === 45 || p === 47) pitchMappings[p] = "blue_pad";
+          else if (p === 51 || p === 53 || p === 59) pitchMappings[p] = "blue_cymbal";
+          else if (p === 41 || p === 43) pitchMappings[p] = "green_pad";
+          else if (p === 49 || p === 52 || p === 55 || p === 57) pitchMappings[p] = "green_cymbal";
+          else pitchMappings[p] = "ignore";
+        } else {
+          if (p === 96 || p === 60) pitchMappings[p] = "g0";
+          else if (p === 97 || p === 61) pitchMappings[p] = "g1";
+          else if (p === 98 || p === 62) pitchMappings[p] = "g2";
+          else if (p === 99 || p === 63) pitchMappings[p] = "g3";
+          else if (p === 100 || p === 64) pitchMappings[p] = "g4";
+          else if (p === 101 || p === 65) pitchMappings[p] = "g5";
+          else if (p === 102 || p === 66) pitchMappings[p] = "g6";
+          else if (p === 103 || p === 67) pitchMappings[p] = "g7";
+          else if (p === 116) pitchMappings[p] = "starpower";
+          else pitchMappings[p] = "ignore";
+        }
+      });
+    }
+
+    function renderMappingTable() {
+      const isDrums = chartTrackSelect.value.toLowerCase().includes("drum");
+      const currentOptions = isDrums ? MAPPING_OPTIONS_DRUMS : MAPPING_OPTIONS_GUITAR;
+      const query = pitchSearch.value.trim().toLowerCase();
+
+      mappingTbody.innerHTML = "";
+
+      const filtered = selectedTrackPitches.filter(item => {
+        const name = (GM_DRUM_MAP[item.pitch] || `MIDI Note ${item.pitch}`).toLowerCase();
+        return item.pitch.toString().includes(query) || name.includes(query);
+      });
+
+      if (filtered.length === 0) {
+        mappingTbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 italic">No matching pitches</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(item => {
+        const pitch = item.pitch;
+        const count = item.count;
+        const gmName = GM_DRUM_MAP[pitch] || "Unknown Instrument";
+
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-900/30 transition border-b border-slate-900";
+
+        const tdPitch = document.createElement("td");
+        tdPitch.className = "p-3 font-semibold text-slate-300";
+        tdPitch.textContent = pitch;
+
+        const tdName = document.createElement("td");
+        tdName.className = "p-3 text-slate-400";
+        tdName.textContent = gmName;
+
+        const tdCount = document.createElement("td");
+        tdCount.className = "p-3 text-center text-slate-400 font-medium";
+        tdCount.textContent = count;
+
+        const tdTest = document.createElement("td");
+        tdTest.className = "p-3 text-center";
+        const btnPlay = document.createElement("button");
+        btnPlay.className = "p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-indigo-400 transition inline-flex items-center justify-center";
+        btnPlay.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
+          </svg>
+        `;
+        btnPlay.onclick = () => auditionPitch(pitch);
+        tdTest.appendChild(btnPlay);
+
+        const tdSelect = document.createElement("td");
+        tdSelect.className = "p-3";
+        const select = document.createElement("select");
+        select.className = "bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 w-full transition";
+        
+        currentOptions.forEach(opt => {
+          const o = document.createElement("option");
+          o.value = opt.value;
+          o.textContent = opt.label;
+          o.className = opt.class;
+          select.appendChild(o);
+        });
+
+        select.value = pitchMappings[pitch] || "ignore";
+        applySelectStyling(select, currentOptions);
+
+        select.addEventListener("change", (e) => {
+          pitchMappings[pitch] = e.target.value;
+          applySelectStyling(select, currentOptions);
+          updateMappedPitchesCount();
+          triggerLivePreview();
+        });
+
+        tdSelect.appendChild(select);
+
+        tr.appendChild(tdPitch);
+        tr.appendChild(tdName);
+        tr.appendChild(tdCount);
+        tr.appendChild(tdTest);
+        tr.appendChild(tdSelect);
+
+        mappingTbody.appendChild(tr);
+      });
+
+      updateMappedPitchesCount();
+      triggerLivePreview();
+    }
+
+    function applySelectStyling(selectElement, optionsList) {
+      const selectedVal = selectElement.value;
+      const matchingOpt = optionsList.find(o => o.value === selectedVal);
+      selectElement.className = "bg-slate-900 border border-slate-800 text-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500 w-full transition";
+      if (matchingOpt && selectedVal !== "ignore") {
+        selectElement.classList.add(...matchingOpt.class.split(" "));
+      }
+    }
+
+    function auditionPitch(midiNote) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const frequency = 440 * Math.pow(2, (midiNote - 69) / 12);
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+
+        gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.35);
+
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } catch (e) {
+        console.error("Audio playback error: ", e);
+      }
+    }
+
+    function updateMappedPitchesCount() {
+      const total = selectedTrackPitches.length;
+      let mapped = 0;
+      selectedTrackPitches.forEach(item => {
+        if (pitchMappings[item.pitch] && pitchMappings[item.pitch] !== "ignore") {
+          mapped++;
+        }
+      });
+      mappedCountText.textContent = `Mapped: ${mapped} of ${total} active pitches`;
+    }
+
+    btnMapAllIgnore.addEventListener("click", () => {
+      selectedTrackPitches.forEach(item => {
+        pitchMappings[item.pitch] = "ignore";
+      });
+      renderMappingTable();
+    });
+
+    btnResetPresets.addEventListener("click", () => {
+      applyAutomaticPresets();
+      renderMappingTable();
+    });
+
+    // Chart file compilation with dynamically offset/delay configurations
+    function generateChartString() {
+      if (!parsedMidiData) return "";
+      const sourcePPQ = parsedMidiData.header.ppq || 480;
+      const trackIdx = parseInt(midiTrackSelect.value);
+      const targetTrack = chartTrackSelect.value;
+      const track = parsedMidiData.tracks[trackIdx];
+      const notes = track ? track.notes : [];
+
+      // Calculate the final silence lead-in shift value in seconds
+      const defaultLeadInSec = parseFloat(inputLeadIn.value) || 0.0;
+      const overrideFirstNote = chkOverrideFirstNote.checked;
+      const targetFirstNoteTime = parseFloat(inputFirstNoteTime.value) || 2.0;
+
+      let finalLeadInSec = defaultLeadInSec;
+
+      if (overrideFirstNote && notes.length > 0) {
+        const originalFirstNoteTime = Math.min(...notes.map(n => n.time));
+        finalLeadInSec = targetFirstNoteTime - originalFirstNoteTime;
+        if (finalLeadInSec < 0) finalLeadInSec = 0; // Clamp shifts to non-negative boundaries
+      }
+
+      // Read initial BPM of the MIDI file to convert seconds into tick counts at 480 PPQ
+      let initialBPM = 120;
+      if (parsedMidiData.header.tempos && parsedMidiData.header.tempos.length > 0) {
+        const sortedTempos = [...parsedMidiData.header.tempos].sort((a, b) => a.ticks - b.ticks);
+        initialBPM = sortedTempos[0].bpm;
+      }
+
+      // Tick Conversion: Ticks = Seconds * (BPM / 60) * PPQ. Since PPQ is scaled to 480: (480 / 60) = 8.
+      // Therefore, Ticks = Seconds * BPM * 8.
+      const leadInTicks = Math.round(finalLeadInSec * initialBPM * 8);
+
+      const lines = [];
+      
+      lines.push("[Song]");
+      lines.push("{");
+      lines.push("  Resolution = 480");
+      lines.push("}");
+      
+      lines.push("[SyncTrack]");
+      lines.push("{");
+      
+      // Determine base time signature configuration
+      let initialTSNum = 4;
+      let initialTSDenExp = 2; // (2^2 = /4 time signature)
+      const timeSignatures = parsedMidiData.header.timeSignatures || [];
+      if (timeSignatures.length > 0) {
+        const sortedTS = [...timeSignatures].sort((a, b) => a.ticks - b.ticks);
+        initialTSNum = sortedTS[0].timeSignature[0];
+        initialTSDenExp = Math.round(Math.log2(sortedTS[0].timeSignature[1]));
+      }
+
+      const tsOutput = [];
+      // Always write TS and BPM at absolute Tick 0 to form valid header files
+      tsOutput.push(`0 = TS ${initialTSNum} ${initialTSDenExp}`);
+      
+      const tempoOutput = [];
+      tempoOutput.push(`0 = B ${Math.round(initialBPM * 1000)}`);
+
+      // Write shifted Time Signatures
+      if (timeSignatures.length > 0) {
+        timeSignatures.forEach(ts => {
+          const targetTick = Math.round(ts.ticks * (480 / sourcePPQ)) + leadInTicks;
+          if (targetTick === 0) return; // Already declared at 0
+          const num = ts.timeSignature[0];
+          const den = ts.timeSignature[1];
+          const denExp = Math.round(Math.log2(den));
+          tsOutput.push(`${targetTick} = TS ${num} ${denExp}`);
+        });
+      }
+
+      // Write shifted tempos
+      const tempos = parsedMidiData.header.tempos || [];
+      if (tempos.length > 0) {
+        tempos.forEach(tempo => {
+          const targetTick = Math.round(tempo.ticks * (480 / sourcePPQ)) + leadInTicks;
+          if (targetTick === 0) return; // Already declared at 0
+          const chartTempo = Math.round(tempo.bpm * 1000);
+          tempoOutput.push(`${targetTick} = B ${chartTempo}`);
+        });
+      }
+
+      const mergedSync = [...tsOutput, ...tempoOutput];
+      mergedSync.sort((a, b) => {
+        const tickA = parseInt(a.split("=")[0].trim());
+        const tickB = parseInt(b.split("=")[0].trim());
+        return tickA - tickB;
+      });
+
+      mergedSync.forEach(line => lines.push(`  ${line}`));
+      lines.push("}");
+
+      lines.push("[Events]");
+      lines.push("{");
+      lines.push("}");
+
+      lines.push(`[${targetTrack}]`);
+      lines.push("{");
+
+      const chartNotes = [];
+      const starPowerEvents = [];
+
+      notes.forEach(note => {
+        const targetTick = Math.round(note.ticks * (480 / sourcePPQ)) + leadInTicks;
+        const mapping = pitchMappings[note.midi] || "ignore";
+
+        if (mapping === "ignore") return;
+
+        if (mapping === "starpower") {
+          const duration = Math.round(note.durationTicks * (480 / sourcePPQ));
+          starPowerEvents.push(`${targetTick} = S 2 ${duration}`);
+          return;
+        }
+
+        const isDrumsMode = targetTrack.toLowerCase().includes("drum");
+
+        if (isDrumsMode) {
+          if (mapping === "kick") {
+            chartNotes.push(`${targetTick} = N 0 0`);
+          } else if (mapping === "double_kick") {
+            chartNotes.push(`${targetTick} = N 32 0`);
+          } else if (mapping === "red") {
+            chartNotes.push(`${targetTick} = N 1 0`);
+          } else if (mapping === "yellow_pad") {
+            chartNotes.push(`${targetTick} = N 2 0`);
+          } else if (mapping === "yellow_cymbal") {
+            chartNotes.push(`${targetTick} = N 2 0`);
+            chartNotes.push(`${targetTick} = N 66 0`);
+          } else if (mapping === "blue_pad") {
+            chartNotes.push(`${targetTick} = N 3 0`);
+          } else if (mapping === "blue_cymbal") {
+            chartNotes.push(`${targetTick} = N 3 0`);
+            chartNotes.push(`${targetTick} = N 67 0`);
+          } else if (mapping === "green_pad") {
+            chartNotes.push(`${targetTick} = N 4 0`);
+          } else if (mapping === "green_cymbal") {
+            chartNotes.push(`${targetTick} = N 4 0`);
+            chartNotes.push(`${targetTick} = N 68 0`);
+          }
+        } else {
+          const duration = Math.round(note.durationTicks * (480 / sourcePPQ));
+          if (mapping === "g0") chartNotes.push(`${targetTick} = N 0 ${duration}`);
+          else if (mapping === "g1") chartNotes.push(`${targetTick} = N 1 ${duration}`);
+          else if (mapping === "g2") chartNotes.push(`${targetTick} = N 2 ${duration}`);
+          else if (mapping === "g3") chartNotes.push(`${targetTick} = N 3 ${duration}`);
+          else if (mapping === "g4") chartNotes.push(`${targetTick} = N 4 ${duration}`);
+          else if (mapping === "g5") chartNotes.push(`${targetTick} = N 5 0`);
+          else if (mapping === "g6") chartNotes.push(`${targetTick} = N 6 0`);
+          else if (mapping === "g7") chartNotes.push(`${targetTick} = N 7 ${duration}`);
+        }
+      });
+
+      const rawTrackLines = [...starPowerEvents, ...chartNotes];
+      const deduplicatedLines = Array.from(new Set(rawTrackLines));
+
+      deduplicatedLines.sort((a, b) => {
+        const partsA = a.split("=");
+        const partsB = b.split("=");
+        const tickA = parseInt(partsA[0].trim());
+        const tickB = parseInt(partsB[0].trim());
+
+        if (tickA !== tickB) return tickA - tickB;
+        return partsA[1].localeCompare(partsB[1]);
+      });
+
+      deduplicatedLines.forEach(line => lines.push(`  ${line}`));
+      lines.push("}");
+
+      return lines.join("\n");
+    }
+
+    function triggerLivePreview() {
+      const generatedString = generateChartString();
+      if (!generatedString) {
+        previewPanel.classList.add("hidden");
+        return;
+      }
+      
+      const firstLines = generatedString.split("\n").slice(0, 30).join("\n");
+      chartPreview.textContent = firstLines + "\n\n... [Content continues]";
+      previewPanel.classList.remove("hidden");
+    }
+
+    btnGenerate.addEventListener("click", () => {
+      const output = generateChartString();
+      if (!output) {
+        alert("Constructed .chart is empty. Ensure you mapped active pitches.");
+        return;
+      }
+
+      const blob = new Blob([output], { type: "text/plain;charset=utf-8" });
+      const element = document.createElement("a");
+      element.href = URL.createObjectURL(blob);
+      element.download = `${originalFileName}.chart`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    });
+
+    /* =========================================================
+       MIDI Track Exporter Implementation
+       ========================================================= */
+
+    // Render MIDI Tracks to checklists
+    function renderExportTracksTable() {
+      exportTracksTbody.innerHTML = "";
+
+      if (!parsedMidiData) {
+        exportTracksTbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="p-8 text-center text-slate-500 italic">
+              Please upload a MIDI file to display available tracks
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      parsedMidiData.tracks.forEach((track, idx) => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-900/30 transition border-b border-slate-900";
+
+        // Checkbox column
+        const tdCheck = document.createElement("td");
+        tdCheck.className = "p-3 text-center";
+        const chk = document.createElement("input");
+        chk.type = "checkbox";
+        chk.value = idx;
+        chk.className = "track-export-checkbox rounded border-slate-800 bg-slate-950 text-emerald-500 focus:ring-emerald-500 w-4 h-4 cursor-pointer";
+        // Check tracks that contain any notes automatically
+        chk.checked = track.notes.length > 0;
+        tdCheck.appendChild(chk);
+
+        // Index column
+        const tdIdx = document.createElement("td");
+        tdIdx.className = "p-3 font-semibold text-slate-400";
+        tdIdx.textContent = idx;
+
+        // Name column
+        const tdName = document.createElement("td");
+        tdName.className = "p-3 font-medium text-slate-200 truncate max-w-[200px]";
+        tdName.textContent = track.name || "Unnamed Track";
+
+        // Instrument column
+        const tdInst = document.createElement("td");
+        tdInst.className = "p-3 text-slate-400";
+        tdInst.textContent = track.instrument ? track.instrument.name : "Default Program";
+
+        // Notes count column
+        const tdNotes = document.createElement("td");
+        tdNotes.className = "p-3 text-center text-slate-300 font-semibold";
+        tdNotes.textContent = track.notes.length;
+
+        tr.appendChild(tdCheck);
+        tr.appendChild(tdIdx);
+        tr.appendChild(tdName);
+        tr.appendChild(tdInst);
+        tr.appendChild(tdNotes);
+
+        exportTracksTbody.appendChild(tr);
+      });
+
+      chkExportAll.checked = true;
+    }
+
+    // Toggle All checkboxes
+    chkExportAll.addEventListener("change", (e) => {
+      const checkBoxes = document.querySelectorAll(".track-export-checkbox");
+      checkBoxes.forEach(cb => {
+        cb.checked = e.target.checked;
+      });
+    });
+
+    // Export Selected MIDI Tracks back into raw .mid binary payload
+    btnExportMidi.addEventListener("click", () => {
+      if (!parsedMidiData || !rawMidiBuffer) return;
+
+      const checkedBoxes = document.querySelectorAll(".track-export-checkbox:checked");
+      if (checkedBoxes.length === 0) {
+        alert("Please select at least one track to export.");
+        return;
+      }
+
+      const selectedIndices = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+      try {
+        let LocalMidi = window.Midi;
+        if (LocalMidi && LocalMidi.default) {
+          LocalMidi = LocalMidi.default;
+        }
+
+        // Clone MIDI from original ArrayBuffer clone to preserve headers, tempos & signatures
+        const midiCopy = new LocalMidi(rawMidiBuffer.slice(0));
+        
+        // Retain only selected tracks
+        midiCopy.tracks = midiCopy.tracks.filter((track, idx) => selectedIndices.includes(idx));
+
+        // Serialize track events back to raw MIDI bytes
+        const midiBytes = midiCopy.toArray();
+        const blob = new Blob([midiBytes], { type: "audio/midi" });
+        
+        // Initiate browser download
+        const element = document.createElement("a");
+        element.href = URL.createObjectURL(blob);
+        element.download = `${originalFileName}_custom_export.mid`;
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+      } catch (err) {
+        console.error("MIDI Export error: ", err);
+        alert("Failed to build the custom MIDI track export.");
+      }
+    });
+
+  </script>
+</body>
+</html>
